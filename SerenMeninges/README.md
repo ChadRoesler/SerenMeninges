@@ -14,14 +14,13 @@ things that *must* be identical across the three are identical by construction:
   their own tabs).
 
 The governing rule: **core holds contracts and mechanisms, never anything
-redesign-prone.** See [`SPEC.md`](SPEC.md) for the full design (the
-inbound/outbound token symmetry, the version-coupling contract, the guardrail
-list), and **[`IMPLEMENTING.md`](IMPLEMENTING.md) for the step-by-step: how to
-publish this and how to adopt it into a leaf.**
+redesign-prone.** See [`../SPEC.md`](../SPEC.md) for the full design, the
+inbound/outbound token symmetry, the version-coupling contract, and the
+guardrail list of what deliberately stays in the leaf repos.
 
-> Status: `credentials`, `version`, `config`, and the `viewer` baseplate are
-> real and tested (38 tests). `auth` is the one real-shaped skeleton left to
-> test during the build pass.
+> Skeleton status: `credentials`, `version`, and `config` are real and
+> smoke-tested; `auth` and `viewer` are real-shaped starting points to test
+> during the build pass.
 
 ## License
 

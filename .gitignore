@@ -361,3 +361,21 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+###############################################################################
+# Python (seren-meninges package + tooling)
+###############################################################################
+# build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+# setuptools-scm generated version file (if version_file is ever enabled)
+_version.py
+# test + lint caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+# local venvs (the Makefile creates .venv-base; keep all venvs out of git)
+.venv/
+.venv-*/
