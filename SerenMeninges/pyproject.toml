@@ -1,0 +1,49 @@
+# ========================================================================
+#  seren-meninges — the Seren shared core (SKELETON pyproject)
+#  Chad owns release.yml / Trusted Publishing wiring; this is just the
+#  package shape: deps minimal, the OS-keychain backend gated behind an extra.
+# ========================================================================
+[build-system]
+requires = ["setuptools>=64", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "seren-meninges"
+description = "The connective tissue of the Seren brain: shared token resolution, config, auth, version, and viewer shell."
+readme = "README.md"
+license = { text = "GPL-3.0-or-later" }
+requires-python = ">=3.10"
+dynamic = ["version"]
+
+# Core stays light. pyyaml for config; starlette ONLY if you keep the
+# BaseHTTPMiddleware form of auth.py (it's already in every leaf via FastAPI,
+# so it adds nothing to the real install). Drop it if you go pure-ASGI.
+dependencies = [
+  "pyyaml>=6",
+  "starlette>=0.37",
+]
+
+[project.optional-dependencies]
+# The OS keychain backend — opt-in. Headless Jetsons skip it and fall through
+# to env-var tokens; desktops install it for Credential Manager / Keychain /
+# Secret Service via resolve_token's keyring source.
+keyring = ["keyring>=24"]
+dev = ["pytest>=8", "pytest-asyncio>=0.23", "httpx>=0.27"]
+
+[tool.setuptools]
+packages = ["seren_meninges", "seren_meninges.viewer"]
+
+[tool.setuptools.package-data]
+# the viewer shell ships with the wheel
+"seren_meninges.viewer" = ["*.html", "*.css"]
+
+[tool.setuptools_scm]
+# Inner project dir under the git root, mirroring the rest of the family.
+root = ".."
+# Follow suit with loci/memory/corpus: scm writes the version into the package
+# (gitignored). __init__ reads it via importlib.metadata at runtime; this file
+# is the source-checkout fallback.
+version_file = "seren_meninges/_version.py"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

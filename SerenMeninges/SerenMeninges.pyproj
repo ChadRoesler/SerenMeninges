@@ -4,7 +4,8 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>f9c1ad77-1614-48c2-b9b4-10daf24d7a76</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>SerenMeninges.py</StartupFile>
+    <StartupFile>
+    </StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -21,7 +22,28 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="SerenMeninges.py" />
+    <Compile Include="seren_meninges\auth.py" />
+    <Compile Include="seren_meninges\config.py" />
+    <Compile Include="seren_meninges\credentials.py" />
+    <Compile Include="seren_meninges\version.py" />
+    <Compile Include="seren_meninges\viewer\__init__.py" />
+    <Compile Include="seren_meninges\__init__.py" />
+    <Compile Include="tests\test_config.py" />
+    <Compile Include="tests\test_credentials.py" />
+    <Compile Include="tests\test_version.py" />
+    <Compile Include="tests\test_viewer.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="seren_meninges\" />
+    <Folder Include="seren_meninges\viewer\" />
+    <Folder Include="tests\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="LICENSE.txt" />
+    <Content Include="pyproject.toml" />
+    <Content Include="README.md" />
+    <Content Include="seren_meninges\viewer\shell.html" />
+    <Content Include="seren_meninges\viewer\tokens.css" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

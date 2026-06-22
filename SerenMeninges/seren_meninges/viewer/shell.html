@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<!-- ====================================================================
+     seren_meninges viewer SHELL — the baseplate. The shared chrome around
+     every Seren viewer. Leaves snap conventional fragment files onto the
+     named slots via render_from_dir(); the leaf never edits this file. The
+     token modal, api() helper, escapeHtml, and tab switching live here ONCE
+     so all three services behave identically.
+     ==================================================================== -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{BRAND}}</title>
+<style>/*{{TOKENS_CSS}}*/</style>
+<style>/*{{LEAF_STYLES}}*/</style>
+<!--{{EXTRA_HEAD}}-->
+</head>
+<body>
+<header class="seren-head">
+  <span class="brand"><span class="dot">●</span> {{BRAND}}</span>
+  <span class="subtitle">{{SUBTITLE}}</span>
+  <span class="spacer"></span>
+  <button id="tokenBtn" onclick="openToken()">🔑 Token</button>
+</header>
+
+<nav class="tabbar" id="tabbar"><!--{{TABS}}--></nav>
+<main id="views"><!--{{VIEWS}}--></main>
+
+<div class="modal-back" id="tokenModal">
+  <div class="modal">
+    <h3>Bearer token</h3>
+    <p class="muted">Stored in this browser only (localStorage) and sent as
+      <code>Authorization: Bearer …</code>. Leave blank if the service runs open.</p>
+    <input id="tokenInput" type="password" placeholder="paste token" style="width:100%">
+    <div style="margin-top:14px; display:flex; gap:8px; justify-content:flex-end">
+      <button onclick="clearToken()">Clear</button>
+      <button class="primary" onclick="saveToken()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── shared shell JS (identical across services) ──────────────────────
+const TOKEN_KEY = "seren_token";
+function getToken(){ return localStorage.getItem(TOKEN_KEY) || ""; }
+function openToken(){ document.getElementById("tokenInput").value = getToken();
+  document.getElementById("tokenModal").classList.add("open"); }
+function closeToken(){ document.getElementById("tokenModal").classList.remove("open"); }
+function saveToken(){ localStorage.setItem(TOKEN_KEY, document.getElementById("tokenInput").value.trim()); closeToken(); }
+function clearToken(){ localStorage.removeItem(TOKEN_KEY); closeToken(); }
+
+async function api(path, opts={}){
+  const headers = Object.assign({"Content-Type":"application/json"}, opts.headers||{});
+  const tok = getToken();
+  if (tok) headers["Authorization"] = "Bearer " + tok;
+  const res = await fetch(path, Object.assign({}, opts, {headers}));
+  if (!res.ok) throw new Error(res.status + " " + res.statusText);
+  const ct = res.headers.get("content-type") || "";
+  return ct.includes("application/json") ? res.json() : res.text();
+}
+
+function escapeHtml(s){ return String(s==null?"":s).replace(/[&<>"']/g,
+  c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+function showTab(id){
+  document.querySelectorAll(".tabbar .tab").forEach(t => t.classList.toggle("active", t.dataset.tab===id));
+  document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id===id));
+}
+// activate the first tab on load
+document.addEventListener("DOMContentLoaded", () => {
+  const first = document.querySelector(".tabbar .tab");
+  if (first) showTab(first.dataset.tab);
+});
+
+// ── leaf-supplied tab logic ──────────────────────────────────────────
+//{{EXTRA_JS}}
+</script>
+</body>
+</html>
