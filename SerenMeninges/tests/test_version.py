@@ -25,4 +25,4 @@ def test_missing_dist_returns_custom_fallback():
 
 def test_never_raises_on_garbage_name():
     # an empty/invalid name still returns the fallback rather than raising
-    assert get_version("", fallback="f") == "f"
+    assert get_version("", fallback="9.9.9") == "9.9.9"
