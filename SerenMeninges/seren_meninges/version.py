@@ -20,6 +20,12 @@ def get_version(distribution: str, *, fallback: str = "0.0.0") -> str:
     service calls ``get_version("seren-<thing>")`` for its OWN version; the
     helper is shared, the answer is per-package.
     """
+    # An empty / None name is garbage input, and importlib.metadata's behaviour
+    # for it is environment-dependent: Python <= 3.11 may loosely match an
+    # editable-install finder and return *some* dist's version, while 3.12+
+    # raises ValueError. Short-circuit to a deterministic answer.
+    if not distribution:
+        return fallback
     try:
         from importlib.metadata import PackageNotFoundError, version
         return version(distribution)

@@ -23,6 +23,9 @@ def test_missing_dist_returns_custom_fallback():
     assert get_version("nope-not-real-xyz", fallback="9.9.9") == "9.9.9"
 
 
-def test_never_raises_on_garbage_name():
-    # an empty/invalid name still returns the fallback rather than raising
+def test_empty_name_returns_fallback():
+    # An empty/None dist name is garbage; get_version guards it and returns the
+    # fallback deterministically. (importlib.metadata's behaviour for "" differs
+    # by Python version — <=3.11 may match an editable dist, 3.12+ raises — so
+    # the function can't lean on it.)
     assert get_version("", fallback="f") == "f"
