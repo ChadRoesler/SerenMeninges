@@ -4,69 +4,207 @@
    nothing else needs to change for a consistent, on-brand look.
    ==================================================================== */
 :root {
-  /* the single per-service override */
-  --accent: {{ACCENT}};
-
-  /* neutral surface palette (dark homelab dashboard) */
-  --bg:        #0e0f13;
-  --surface:   #16181f;
-  --surface-2: #1d2029;
-  --border:    #2a2e3a;
-  --text:      #e6e8ee;
-  --text-dim:  #9aa0ac;
-  --danger:    #e5534b;
-  --ok:        #3fb950;
-
-  /* type + spacing */
-  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --mono: ui-monospace, "Cascadia Code", "JetBrains Mono", Consolas, monospace;
-  --radius: 10px;
-  --gap: 14px;
+    /* the single per-service override */
+    --accent: {{ACCENT}};
+    /* neutral surface palette (dark homelab dashboard) */
+    --bg: #14141f;
+    --surface: #1f2036;
+    --surface-2: #262844;
+    --border: #33365a;
+    --text: #e9ebff;
+    --text-dim: #9aa0c8;
+    --danger: #e5534b;
+    --ok: #3fb950;
+    /* type + spacing */
+    --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --radius: 10px;
+    --gap: 14px;
+    --bg-fade:#2a1d2e;
 }
 
-* { box-sizing: border-box; }
+* {
+    box-sizing: border-box;
+}
+
+html {
+    background: radial-gradient(1200px 600px at 70% -10%, var(--bg-fade) 0%, var(--bg) 55%) no-repeat fixed;
+    background-color: var(--bg);
+}
+
 body {
-  margin: 0; background: var(--bg); color: var(--text);
-  font-family: var(--font); line-height: 1.5;
+    margin: 0;
+    color: var(--text);
+    font-family: var(--font);
+    background: transparent;
+    line-height: 1.5;
+    background-attachment: fixed;
 }
-a { color: var(--accent); }
+
+a {
+    color: var(--accent);
+}
+
 header.seren-head {
-  display: flex; align-items: baseline; gap: 12px;
-  padding: 16px 22px; border-bottom: 1px solid var(--border);
-  background: var(--surface);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 22px;
+    border-bottom: 1px solid var(--border);
+    background-image: linear-gradient(180deg, color-mix(in srgb, var(--accent) 7%, transparent), transparent);
 }
-header.seren-head .brand { font-weight: 700; font-size: 1.15rem; }
-header.seren-head .brand .dot { color: var(--accent); }
-header.seren-head .subtitle { color: var(--text-dim); font-size: .85rem; }
-header.seren-head .spacer { flex: 1; }
+
+.seren-head .brand-block {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.seren-head .brand {
+    font-weight: 700;
+    font-size: 1.13rem;
+    letter-spacing: .3px;
+}
+
+    .seren-head .brand b {
+        color: var(--accent);
+        font-weight: 700;
+    }
+
+.seren-head .subtitle {
+    color: var(--text-dim);
+    font-size: .76rem;
+    font-family: var(--mono);
+}
+
+.seren-head .spacer {
+    flex: 1;
+}
+
+/* header widgets a leaf drops into the head_aside stud (status pill + refresh) */
+.head-pill {
+    font-family: var(--mono);
+    font-size: .72rem;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    white-space: nowrap;
+    background: transparent;
+}
+
+    .head-pill.hot {
+        color: var(--accent);
+        border-color: var(--accent);
+    }
 
 button {
-  font: inherit; color: var(--text); background: var(--surface-2);
-  border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 7px 13px; cursor: pointer;
+    font: inherit;
+    color: var(--text);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 7px 13px;
+    cursor: pointer;
 }
-button:hover { border-color: var(--accent); }
-button.primary { background: var(--accent); color: #0b0c10; border-color: var(--accent); font-weight: 600; }
 
-.tabbar { display: flex; gap: 6px; padding: 12px 22px 0; }
-.tabbar .tab { background: transparent; border: 1px solid transparent; border-bottom: none;
-  border-radius: var(--radius) var(--radius) 0 0; color: var(--text-dim); }
-.tabbar .tab.active { color: var(--text); background: var(--surface); border-color: var(--border); }
-.view { display: none; padding: 22px; }
-.view.active { display: block; }
+    button:hover:not(.tab) {
+        border-color: var(--accent);
+    }
+
+    button.primary {
+        background: var(--accent);
+        color: #0b0c10;
+        border-color: var(--accent);
+        font-weight: 600;
+    }
+
+.tabbar {
+    display: flex;
+    gap: 2px;
+    padding: 0 22px;
+    border-bottom: 1px solid var(--border);
+}
+
+    .tabbar .tab {
+        background: none;
+        border: none;
+        border-bottom: 2px solid transparent;
+        border-radius: 0;
+        color: var(--text-dim);
+        padding: 12px 16px;
+        font-size: .9rem;
+        cursor: pointer;
+    }
+
+        .tabbar .tab:hover {
+            color: var(--text);
+        }
+
+        .tabbar .tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+            background: none;
+        }
+
+#views {
+    max-width: 1100px;
+}
+
+.view {
+    display: none;
+    padding: 22px;
+}
+
+    .view.active {
+        display: block;
+    }
 
 input, select, textarea {
-  font: inherit; color: var(--text); background: var(--bg);
-  border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px;
+    font: inherit;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
 }
-.card { background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 16px; margin-bottom: var(--gap); }
+
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: var(--gap);
+}
 
 /* token modal */
-.modal-back { position: fixed; inset: 0; background: rgba(0,0,0,.6);
-  display: none; align-items: center; justify-content: center; }
-.modal-back.open { display: flex; }
-.modal { background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 22px; width: min(420px, 92vw); }
-.modal h3 { margin-top: 0; }
-.muted { color: var(--text-dim); font-size: .85rem; }
+.modal-back {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+    .modal-back.open {
+        display: flex;
+    }
+
+.modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px;
+    width: min(420px, 92vw);
+}
+
+    .modal h3 {
+        margin-top: 0;
+    }
+
+.muted {
+    color: var(--text-dim);
+    font-size: .85rem;
+}
