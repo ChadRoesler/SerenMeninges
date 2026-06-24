@@ -12,6 +12,7 @@
     <OutputPath>.</OutputPath>
     <Name>SerenMeninges</Name>
     <RootNamespace>SerenMeninges</RootNamespace>
+    <TestFramework>Pytest</TestFramework>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
