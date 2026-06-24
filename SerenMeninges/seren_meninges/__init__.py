@@ -22,11 +22,13 @@ dependency-light for callers that don't need them.
 from __future__ import annotations
 
 from .config import ServerConfig, TlsConfig, apply_env_overrides, read_yaml
-from .credentials import resolve_token
+from .credentials import resolve_token, store_token, delete_token
 from .version import get_version
 
 __all__ = [
     "resolve_token",
+    "store_token",
+    "delete_token",
     "ServerConfig",
     "TlsConfig",
     "read_yaml",
