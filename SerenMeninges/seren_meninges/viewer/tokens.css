@@ -5,22 +5,23 @@
    ==================================================================== */
 :root {
     /* the single per-service override */
-    --accent: {{ACCENT}};
-    /* neutral surface palette (dark homelab dashboard) */
-    --bg: #14141f;
-    --surface: #1f2036;
-    --surface-2: #262844;
-    --border: #33365a;
-    --text: #e9ebff;
-    --text-dim: #9aa0c8;
-    --danger: #e5534b;
-    --ok: #3fb950;
-    /* type + spacing */
-    --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
-    --radius: 10px;
-    --gap: 14px;
-    --bg-fade:#2a1d2e;
+    --accent: {{ACCENT}}
+;
+/* neutral surface palette (dark homelab dashboard) */
+--bg: #14141f;
+--surface: #1f2036;
+--surface-2: #262844;
+--border: #33365a;
+--text: #e9ebff;
+--text-dim: #9aa0c8;
+--danger: #e5534b;
+--ok: #3fb950;
+/* type + spacing */
+--font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+--mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+--radius: 10px;
+--gap: 14px;
+--bg-fade:color-mix(in srgb, var(--accent) 18%, var(--bg));
 }
 
 * {
@@ -43,6 +44,16 @@ body {
 
 a {
     color: var(--accent);
+}
+
+.seren-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    /* translucent fill so content blurs UNDER the bar instead of bleeding through */
+    background-color: color-mix(in srgb, var(--surface) 78%, transparent);
+    backdrop-filter: blur(12px) saturate(1.3);
+    -webkit-backdrop-filter: blur(12px) saturate(1.3);
 }
 
 header.seren-head {
@@ -161,13 +172,17 @@ button {
         display: block;
     }
 
-input, select, textarea {
+input:not([type="checkbox"]):not([type="radio"]), select, textarea {
     font: inherit;
     color: var(--text);
     background: var(--bg);
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 8px 10px;
+}
+
+input[type="checkbox"], input[type="radio"] {
+        accent-color: var(--accent);
 }
 
 .card {
@@ -186,6 +201,7 @@ input, select, textarea {
     display: none;
     align-items: center;
     justify-content: center;
+    z-index: 100;
 }
 
     .modal-back.open {

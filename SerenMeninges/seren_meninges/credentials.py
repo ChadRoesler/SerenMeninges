@@ -124,3 +124,59 @@ def _from_keyring(ref: str) -> Optional[str]:
     except Exception as e:  # no backend, locked store, D-Bus missing, etc.
         log.warning("keyring lookup failed for %r: %s", ref, e)
         return None
+
+
+def store_token(keyring_ref: str, secret: str) -> bool:
+    """The WRITE half of resolve_token's keyring branch: stash a secret in the
+    OS keychain under "service/username" (same ref shape as resolve_token reads).
+
+    Returns True if the secret landed in the keychain; False if there's no
+    usable backend (the headless-Jetson/Xavier case), the [keyring] extra isn't
+    installed, or the ref is malformed. NEVER raises - the caller uses the False
+    to fall back to an inline (plaintext) pointer, mirroring resolve_token's
+    read-side degrade-never-crash rule. The platform decides the security tier:
+    a desktop with Credential Manager / Keychain / Secret Service gets real
+    protection; a bare node with no backend degrades to trusted-LAN plaintext.
+    """
+    service, sep, username = keyring_ref.partition("/")
+    if not sep or not service or not username:
+        log.warning("store_token: keyring ref %r must be 'service/username'", keyring_ref)
+        return False
+    try:
+        import keyring  # optional: the [keyring] extra
+    except ImportError:
+        log.warning("store_token: the [keyring] extra isn't installed - "
+                    "`pip install seren-meninges[keyring]` (no keychain on this node)")
+        return False
+    try:
+        keyring.set_password(service, username, secret)
+        log.debug("store_token: wrote secret to keychain (%s)", keyring_ref)
+        return True
+    except Exception as e:  # no backend, locked store, D-Bus missing, etc.
+        log.warning("store_token: keychain write failed for %r: %s", keyring_ref, e)
+        return False
+
+
+def delete_token(keyring_ref: str) -> bool:
+    """Remove a secret from the OS keychain (the cleanup half - call it when a
+    store/resource that owned a keychain entry is deleted, so removing it never
+    orphans a secret).
+
+    Returns True if an entry was deleted, False if it was absent, the ref is
+    malformed, or there's no usable backend. NEVER raises: a removal must not
+    fail just because the keychain entry was already gone (or was an inline
+    token that never touched the keychain in the first place).
+    """
+    service, sep, username = keyring_ref.partition("/")
+    if not sep or not service or not username:
+        return False
+    try:
+        import keyring  # optional: the [keyring] extra
+    except ImportError:
+        return False
+    try:
+        keyring.delete_password(service, username)
+        log.debug("delete_token: removed keychain entry (%s)", keyring_ref)
+        return True
+    except Exception:  # PasswordDeleteError (not found), no backend, etc.
+        return False

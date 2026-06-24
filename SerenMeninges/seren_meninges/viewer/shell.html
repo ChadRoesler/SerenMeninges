@@ -17,17 +17,18 @@
     <!--{{EXTRA_HEAD}}-->
 </head>
 <body>
-    <header class="seren-head">
-        <div class="brand-block">
-            <span class="brand">{{BRAND}}</span>
-            <span class="subtitle">{{SUBTITLE}}</span>
-        </div>
-        <span class="spacer"></span>
-        <!--{{HEAD_ASIDE}}-->
-        <button id="tokenBtn" onclick="openToken()">🔑 Token</button>
-    </header>
-
-    <nav class="tabbar" id="tabbar"><!--{{TABS}}--></nav>
+    <div class="seren-topbar">
+        <header class="seren-head">
+            <div class="brand-block">
+                <span class="brand">{{BRAND}}</span>
+                <span class="subtitle">{{SUBTITLE}}</span>
+            </div>
+            <span class="spacer"></span>
+            <!--{{HEAD_ASIDE}}-->
+            <button id="tokenBtn" onclick="openToken()">🔑 Token</button>
+        </header>
+        <nav class="tabbar" id="tabbar"><!--{{TABS}}--></nav>
+    </div>
     <main id="views"><!--{{VIEWS}}--></main>
 
     <div class="modal-back" id="tokenModal">
@@ -90,6 +91,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // ── leaf-supplied tab logic ──────────────────────────────────────────
 //{{EXTRA_JS}}
-    </script>
+        </script>
 </body>
 </html>
