@@ -15,7 +15,7 @@
     <File Path="Makefile" />
     <File Path="README.md" />
   </Folder>
-  <Project Path="SerenMeninges/SerenMeninges.pyproj" Type="888888a0-9f3d-457c-b088-3a5042f75d52">
+  <Project Path="SerenMeninges/SerenMeninges.pyproj" Type="888888a0-9f3d-457c-b088-3a5042f75d52" Id="f9c1ad77-1614-48c2-b9b4-10daf24d7a76">
     <Build Project="false" />
   </Project>
 </Solution>

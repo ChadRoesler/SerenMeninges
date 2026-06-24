@@ -8,38 +8,46 @@
      ==================================================================== -->
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{BRAND}}</title>
-<style>/*{{TOKENS_CSS}}*/</style>
-<style>/*{{LEAF_STYLES}}*/</style>
-<!--{{EXTRA_HEAD}}-->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{TITLE}}</title>
+    {{FAVICON}}
+    <style>/*{{TOKENS_CSS}}*/</style>
+    <style>/*{{LEAF_STYLES}}*/</style>
+    <!--{{EXTRA_HEAD}}-->
 </head>
 <body>
-<header class="seren-head">
-  <span class="brand"><span class="dot">●</span> {{BRAND}}</span>
-  <span class="subtitle">{{SUBTITLE}}</span>
-  <span class="spacer"></span>
-  <button id="tokenBtn" onclick="openToken()">🔑 Token</button>
-</header>
+    <header class="seren-head">
+        <div class="brand-block">
+            <span class="brand">{{BRAND}}</span>
+            <span class="subtitle">{{SUBTITLE}}</span>
+        </div>
+        <span class="spacer"></span>
+        <!--{{HEAD_ASIDE}}-->
+        <button id="tokenBtn" onclick="openToken()">🔑 Token</button>
+    </header>
 
-<nav class="tabbar" id="tabbar"><!--{{TABS}}--></nav>
-<main id="views"><!--{{VIEWS}}--></main>
+    <nav class="tabbar" id="tabbar"><!--{{TABS}}--></nav>
+    <main id="views"><!--{{VIEWS}}--></main>
 
-<div class="modal-back" id="tokenModal">
-  <div class="modal">
-    <h3>Bearer token</h3>
-    <p class="muted">Stored in this browser only (localStorage) and sent as
-      <code>Authorization: Bearer …</code>. Leave blank if the service runs open.</p>
-    <input id="tokenInput" type="password" placeholder="paste token" style="width:100%">
-    <div style="margin-top:14px; display:flex; gap:8px; justify-content:flex-end">
-      <button onclick="clearToken()">Clear</button>
-      <button class="primary" onclick="saveToken()">Save</button>
+    <div class="modal-back" id="tokenModal">
+        <div class="modal">
+            <h3>Bearer token</h3>
+            <p class="muted">
+                Stored in this browser only (localStorage) and sent as
+                <code>Authorization: Bearer …</code>. Leave blank if the service runs open.
+            </p>
+            <input id="tokenInput" type="password" placeholder="paste token" style="width:100%">
+            <div style="margin-top:14px; display:flex; gap:8px; align-items:center">
+                <button onclick="clearToken()">Clear</button>
+                <span style="flex:1"></span>
+                <button onclick="closeToken()">Cancel</button>
+                <button class="primary" onclick="saveToken()">Save</button>
+            </div>
+        </div>
     </div>
-  </div>
-</div>
 
-<script>
+    <script>
 // ── shared shell JS (identical across services) ──────────────────────
 const TOKEN_KEY = "seren_token";
 function getToken(){ return localStorage.getItem(TOKEN_KEY) || ""; }
@@ -48,6 +56,14 @@ function openToken(){ document.getElementById("tokenInput").value = getToken();
 function closeToken(){ document.getElementById("tokenModal").classList.remove("open"); }
 function saveToken(){ localStorage.setItem(TOKEN_KEY, document.getElementById("tokenInput").value.trim()); closeToken(); }
 function clearToken(){ localStorage.removeItem(TOKEN_KEY); closeToken(); }
+
+// dismiss without saving: click the dim backdrop (not the dialog), or press Esc
+document.getElementById("tokenModal").addEventListener("click", e => {
+  if (e.target.id === "tokenModal") closeToken();
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") closeToken();
+});
 
 async function api(path, opts={}){
   const headers = Object.assign({"Content-Type":"application/json"}, opts.headers||{});
@@ -74,6 +90,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // ── leaf-supplied tab logic ──────────────────────────────────────────
 //{{EXTRA_JS}}
-</script>
+    </script>
 </body>
 </html>

@@ -33,6 +33,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Mapping, Optional, Union
+from urllib.parse import quote
 
 _HERE = Path(__file__).parent
 
@@ -40,33 +41,57 @@ _HERE = Path(__file__).parent
 # A leaf drops any SUBSET of these into its viewer dir. This mapping is the
 # whole contract; expose it so a leaf can introspect / scaffold from it.
 SLOT_FILES: dict[str, str] = {
-    "head":    "head.html",     # extra <link>/<meta> for <head> (rare)
-    "styles":  "styles.css",    # leaf CSS, dropped into a <style> block
-    "tabs":    "tabs.html",     # the tab buttons (your section headers)
-    "body":    "body.html",     # the tab panels (the content)
-    "scripts": "scripts.js",    # leaf tab logic, dropped into the <script>
+    "head":       "head.html",         # extra <link>/<meta> for <head> (rare)
+    "head_aside": "header_aside.html",  # right-side header widgets (pills, refresh)
+    "styles":     "styles.css",         # leaf CSS, dropped into a <style> block
+    "tabs":       "tabs.html",          # the tab buttons (your section headers)
+    "body":       "body.html",          # the tab panels (the content)
+    "scripts":    "scripts.js",         # leaf tab logic, dropped into the <script>
 }
 
 # slot name -> the marker it replaces in shell.html / tokens.css
 _MARKERS: dict[str, str] = {
-    "tokens":   "/*{{TOKENS_CSS}}*/",   # baseplate-owned (shared design tokens)
-    "accent":   "{{ACCENT}}",
-    "brand":    "{{BRAND}}",
-    "subtitle": "{{SUBTITLE}}",
-    "head":     "<!--{{EXTRA_HEAD}}-->",
-    "styles":   "/*{{LEAF_STYLES}}*/",
-    "tabs":     "<!--{{TABS}}-->",
-    "body":     "<!--{{VIEWS}}-->",
-    "scripts":  "//{{EXTRA_JS}}",
+    "tokens":    "/*{{TOKENS_CSS}}*/",   # baseplate-owned (shared design tokens)
+    "accent":    "{{ACCENT}}",
+    "title":     "{{TITLE}}",            # <title> in <head> (not the header strip)
+    "favicon":   "{{FAVICON}}",          # <link rel=icon>; defaults to an accent-tinted SVG
+    "brand":     "{{BRAND}}",            # accepts inline markup (e.g. <b> for the accent wordmark)
+    "subtitle":  "{{SUBTITLE}}",
+    "head":      "<!--{{EXTRA_HEAD}}-->",
+    "head_aside": "<!--{{HEAD_ASIDE}}-->",
+    "styles":    "/*{{LEAF_STYLES}}*/",
+    "tabs":      "<!--{{TABS}}-->",
+    "body":      "<!--{{VIEWS}}-->",
+    "scripts":   "//{{EXTRA_JS}}",
 }
+
+
+def _default_favicon(accent: str) -> str:
+    """A zero-asset favicon tinted with the service accent: an accent rounded
+    tile with a dark node punched into it. Gives every Seren tab an at-a-glance
+    color - cyan Loci, violet bridge, coral Memory - with no image file shipped.
+    A leaf overrides it by passing `favicon=` to render_from_dir, or by dropping
+    its own <link rel="icon"> in head.html (which lands later in <head>, so it
+    wins). When real hand-drawn icons land, swap them in the same two ways.
+    """
+    svg = (
+        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'>"
+        f"<rect x='3' y='3' width='26' height='26' rx='8' fill='{accent}'/>"
+        "<circle cx='16' cy='16' r='5' fill='#0e0f13'/>"
+        "</svg>"
+    )
+    return f'<link rel="icon" href="data:image/svg+xml,{quote(svg)}">'
 
 
 def render_shell(
     *,
+    title: str = "SerenMeninges",
     brand: str,
     accent: str = "#9d7cff",
     subtitle: str = "",
+    favicon: str = "",
     head: str = "",
+    head_aside: str = "",
     styles: str = "",
     tabs: str = "",
     body: str = "",
@@ -76,13 +101,22 @@ def render_shell(
     fragment of markup/CSS/JS; an empty arg leaves that stud empty (no leftover
     marker). Most leaves use `render_from_dir` and never call this directly -
     it's the escape hatch for programmatically-built or inline content.
+
+    `brand` accepts inline markup, not just text - wrap part of the wordmark in
+    <b> to accent it (e.g. "Seren<b>Loci</b> · the left brain"); the baseplate
+    styles .brand b with --accent. `head_aside` is the right-side header strip
+    (status pills, a refresh button) - the leaf supplies the markup and wires
+    any buttons in its scripts.js.
     """
     out = (_HERE / "shell.html").read_text(encoding="utf-8")
     out = out.replace(_MARKERS["tokens"], (_HERE / "tokens.css").read_text(encoding="utf-8"))
     out = out.replace(_MARKERS["accent"], accent)
+    out = out.replace(_MARKERS["title"], title)
     out = out.replace(_MARKERS["brand"], brand)
     out = out.replace(_MARKERS["subtitle"], subtitle)
+    out = out.replace(_MARKERS["favicon"], favicon)
     out = out.replace(_MARKERS["head"], head)
+    out = out.replace(_MARKERS["head_aside"], head_aside)
     out = out.replace(_MARKERS["styles"], styles)
     out = out.replace(_MARKERS["tabs"], tabs)
     out = out.replace(_MARKERS["body"], body)
@@ -93,9 +127,11 @@ def render_shell(
 def render_from_dir(
     viewer_dir: Union[str, Path],
     *,
+    title: str = "SerenMeninges",
     brand: str,
-    accent: str = "#9d7cff",
+    accent: str = "#85ff7c",
     subtitle: str = "",
+    favicon: Optional[str] = None,
     overrides: Optional[Mapping[str, str]] = None,
 ) -> str:
     """THE BASEPLATE. Point it at a folder of fragment files; it snaps whatever
@@ -103,17 +139,22 @@ def render_from_dir(
 
     Convention (any subset; a missing file -> empty stud, never an error):
 
-        tabs.html     the tab buttons  (your section headers)
-        body.html     the tab panels   (the content)
-        styles.css    leaf CSS         (into a <style> block)
-        scripts.js    leaf tab logic   (into the page <script>)
-        head.html     extra <link>/<meta> for <head> (rare)
+        tabs.html          the tab buttons  (your section headers)
+        body.html          the tab panels   (the content)
+        styles.css         leaf CSS         (into a <style> block)
+        scripts.js         leaf tab logic   (into the page <script>)
+        header_aside.html  right-side header widgets (status pills, refresh)
+        head.html          extra <link>/<meta> for <head> (rare)
 
     The leaf NEVER edits shell.html - it just maintains these files.
 
     `overrides` (optional): {slot: path-or-rawtext} to point a slot at a
     differently-named file, or to inject inline text for one slot. An existing
     file path is read; anything else is used verbatim. Lenient by design.
+
+    `favicon` (optional): None -> an accent-tinted inline SVG (zero asset); a
+    URL string -> wrapped in <link rel="icon">; a full <link>/markup string ->
+    used verbatim. Per-service hand-drawn art can also go in head.html.
     """
     d = Path(viewer_dir)
     overrides = dict(overrides or {})
@@ -126,4 +167,13 @@ def render_from_dir(
         else:
             f = d / fname
             filled[slot] = f.read_text(encoding="utf-8") if f.is_file() else ""
-    return render_shell(brand=brand, accent=accent, subtitle=subtitle, **filled)
+    # favicon: None -> accent-tinted inline SVG; a bare URL -> wrapped in a
+    # <link>; anything starting with "<" -> used verbatim (full <link>/markup).
+    if favicon is None:
+        fav = _default_favicon(accent)
+    elif favicon.lstrip().startswith("<"):
+        fav = favicon
+    else:
+        fav = f'<link rel="icon" href="{favicon}">'
+    return render_shell(title=title, brand=brand, accent=accent,
+                        subtitle=subtitle, favicon=fav, **filled)
