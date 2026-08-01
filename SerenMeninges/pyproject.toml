@@ -28,7 +28,21 @@ dependencies = [
 # to env-var tokens; desktops install it for Credential Manager / Keychain /
 # Secret Service via resolve_token's keyring source.
 keyring = ["keyring>=24"]
-dev = ["pytest>=8", "pytest-asyncio>=0.23", "httpx>=0.27"]
+
+# Update checking (seren_meninges.updates) - opt-in, same shape as keyring.
+# httpx to ask the index, packaging to compare the answer. Both are LAZILY
+# imported inside the fetch, so seren_meninges.updates imports fine without
+# this extra and reports status="unavailable" instead of exploding.
+#
+# httpx is capped <1 on purpose. It is pre-1.0, so a 1.0 is a signalled
+# breaking change, and the family has already eaten one uncapped major this
+# week (mcp 2.0.0 deleted FastMCP and every service silently dropped its /mcp
+# endpoint). Cap it, don't hope. packaging is uncapped - Version /
+# InvalidVersion are the two names we touch and they have been stable for
+# years.
+updates = ["httpx>=0.27,<1", "packaging>=23"]
+
+dev = ["pytest>=8", "pytest-asyncio>=0.23", "httpx>=0.27,<1", "packaging>=23"]
 
 [tool.setuptools]
 packages = ["seren_meninges", "seren_meninges.viewer"]
