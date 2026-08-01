@@ -16,8 +16,11 @@ import pytest
 from seren_meninges import updates as U
 from seren_meninges.updates import (
     STATUS_DISABLED, STATUS_ERROR, STATUS_OK, STATUS_UNAVAILABLE,
-    UpdateChecker,
+    UpdateChecker, updates_payload,
 )
+
+EXPECTED_KEYS = {"status", "distribution", "installed", "latest",
+                 "update_available", "detail", "checked_at"}
 
 # A distribution name that is guaranteed not installed, so `installed` comes
 # from fallback_version and every test is deterministic.
@@ -215,6 +218,64 @@ async def test_concurrent_callers_collapse_into_one_fetch():
     results = await asyncio.gather(*(c.get() for _ in range(10)))
     assert len(calls) == 1
     assert all(r.update_available for r in results)
+
+
+# ── updates_payload: the block every service hangs off its info route ──
+
+async def test_payload_without_a_checker_says_unavailable():
+    """A service whose lifespan couldn't build a checker still has to answer.
+    Omitting the key, or returning null, reads as "you're fine" to a renderer -
+    which is a claim we are not entitled to make."""
+    d = await updates_payload(None, distribution="seren-loci", installed="1.2.0")
+    assert d["status"] == STATUS_UNAVAILABLE
+    assert d["installed"] == "1.2.0"
+    assert d["update_available"] is False
+    assert "seren-loci[updates]" in d["detail"], "tell them how to fix it"
+
+
+async def test_payload_with_a_checker_reports_the_answer():
+    c = UpdateChecker(GHOST, fallback_version="1.2.0",
+                      fetcher=fetcher_returning(payload("1.3.0")))
+    d = await updates_payload(c, distribution="seren-loci", installed="1.2.0")
+    assert d["status"] == STATUS_OK
+    assert d["latest"] == "1.3.0"
+    assert d["update_available"] is True
+
+
+async def test_payload_key_set_is_identical_across_every_branch():
+    """THE contract. A dashboard badge reads these keys unconditionally, so
+    wired / not-wired / disabled / errored must be the same shape."""
+    async def boom(distribution):
+        raise ConnectionError("no network")
+    branches = [
+        await updates_payload(None, distribution="x", installed="1.0.0"),
+        await updates_payload(UpdateChecker(GHOST, fallback_version="1.0.0",
+                              fetcher=fetcher_returning(payload("2.0.0"))),
+                              distribution="x", installed="1.0.0"),
+        await updates_payload(UpdateChecker(GHOST, enabled=False, fallback_version="1.0.0"),
+                              distribution="x", installed="1.0.0"),
+        await updates_payload(UpdateChecker(GHOST, fallback_version="1.0.0", fetcher=boom),
+                              distribution="x", installed="1.0.0"),
+    ]
+    for d in branches:
+        assert set(d) == EXPECTED_KEYS
+        assert isinstance(d["update_available"], bool)
+    assert {d["status"] for d in branches} == {
+        STATUS_UNAVAILABLE, STATUS_OK, STATUS_DISABLED, STATUS_ERROR}
+
+
+async def test_payload_never_reports_an_update_it_could_not_verify():
+    """Every non-ok branch must be update_available=False. A green tick on a
+    box that has no idea whether it's current is the failure this whole module
+    exists to avoid."""
+    async def boom(distribution):
+        raise ConnectionError("no network")
+    for c in (None,
+              UpdateChecker(GHOST, enabled=False, fallback_version="1.0.0"),
+              UpdateChecker(GHOST, fallback_version="1.0.0", fetcher=boom)):
+        d = await updates_payload(c, distribution="x", installed="1.0.0")
+        assert d["status"] != STATUS_OK
+        assert d["update_available"] is False
 
 
 async def test_as_dict_is_json_shaped():

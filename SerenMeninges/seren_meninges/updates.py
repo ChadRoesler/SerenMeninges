@@ -234,6 +234,36 @@ class UpdateChecker:
             return resp.json()
 
 
+async def updates_payload(
+    checker: Optional[UpdateChecker],
+    *,
+    distribution: str,
+    installed: str,
+) -> dict:
+    """The JSON block a service hangs off its info route.
+
+    Every service in the family reports the SAME seven keys with the same
+    meanings, whether or not the [updates] extra is installed and whether or
+    not the lifespan managed to build a checker. Pass
+    ``getattr(app.state, "updates", None)`` straight in - a None checker is a
+    normal state, not an error, and it gets its own status rather than a null.
+
+    This lives here rather than being copy-pasted into each leaf because the
+    not-wired branch is exactly the bit that's easy to get subtly wrong, and a
+    service that omits the key (or returns None) reads as "you're fine" to
+    whatever renders it.
+    """
+    if checker is None:
+        return UpdateStatus(
+            status=STATUS_UNAVAILABLE,
+            distribution=distribution,
+            installed=installed,
+            detail=f"update checking not installed - "
+                   f"pip install '{distribution}[updates]'",
+        ).as_dict()
+    return (await checker.get()).as_dict()
+
+
 class _ExtraMissing(RuntimeError):
     """The [updates] extra isn't installed. Reported, not raised at the caller."""
 
