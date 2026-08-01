@@ -8,6 +8,7 @@ that must be identical across all three and are stable enough to be boring:
   - resolve_token()         credentials: config holds a pointer, not a secret
   - ServerConfig/TlsConfig   the shared config blocks + lenient loader
   - get_version()            the one version-getter
+  - UpdateChecker            "is there a newer me" - get_version's far half
   - bearer_auth_middleware   one constant-time auth implementation
   - render_shell()           the viewer's shared shell + design tokens
 
@@ -37,6 +38,7 @@ __all__ = [
     # imported on demand from submodules:
     #   from seren_meninges.auth import bearer_auth_middleware
     #   from seren_meninges.viewer import render_shell
+    #   from seren_meninges.updates import UpdateChecker   # needs [updates]
 ]
 
 try:
