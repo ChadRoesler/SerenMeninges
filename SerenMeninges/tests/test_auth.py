@@ -5,6 +5,12 @@ This is the security control every service in the family mounts, so the tests
 are about POLICY, not implementation: who gets through, who gets 401, and what
 a 401 looks like on the wire (leaves assert the {"detail": ...} shape).
 
+BUILT ON STARLETTE, NOT FASTAPI, ON PURPOSE. Meninges depends on starlette
+only - it is framework-agnostic by design, and the leaves happen to bring
+FastAPI via their own trees. Testing through FastAPI would quietly make it a
+test dependency and let the package drift onto a framework it doesn't require.
+(It also just fails on a clean runner, which is how this was caught.)
+
 Constant-time comparison is not asserted directly - a timing test would be
 flaky and prove little. What IS asserted is that the compare happens on bytes,
 because the str form of hmac.compare_digest raises on non-ASCII input.
@@ -12,42 +18,37 @@ because the str form of hmac.compare_digest raises on non-ASCII input.
 from __future__ import annotations
 
 import pytest
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
+from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.responses import JSONResponse
+from starlette.routing import Route
+from starlette.testclient import TestClient
 
 from seren_meninges.auth import DEFAULT_PUBLIC_PATHS, bearer_auth_middleware
 
 TOKEN = "sekret"
 
+_PATHS = [
+    "/", "/health", "/viewer", "/viewer/ui/app.js",
+    "/private", "/healthy", "/api/v1/system/ping",
+]
+
+
+async def _echo(request):
+    return JSONResponse({"where": request.url.path})
+
 
 def build(token=TOKEN, public_paths=None):
-    app = FastAPI()
-    app.add_middleware(bearer_auth_middleware(token, public_paths=public_paths))
-
-    @app.get("/")
-    async def root(): return {"where": "root"}
-
-    @app.get("/health")
-    async def health(): return {"ok": True}
-
-    @app.get("/viewer")
-    async def viewer(): return {"where": "viewer"}
-
-    @app.get("/viewer/ui/app.js")
-    async def viewer_asset(): return {"where": "asset"}
-
-    @app.get("/private")
-    async def private(): return {"where": "private"}
-
-    @app.get("/healthy")
-    async def healthy(): return {"where": "healthy-is-not-health"}
-
-    @app.get("/api/v1/system/ping")
-    async def ping(): return {"ok": True}
-
     # raise_server_exceptions=False so an unhandled error surfaces as a 500 we
     # can assert on, instead of exploding the test.
-    return TestClient(app, raise_server_exceptions=False)
+    return TestClient(
+        Starlette(
+            routes=[Route(p, _echo) for p in _PATHS],
+            middleware=[Middleware(
+                bearer_auth_middleware(token, public_paths=public_paths))],
+        ),
+        raise_server_exceptions=False,
+    )
 
 
 def bearer(tok):
@@ -128,8 +129,7 @@ def test_401_body_is_the_family_shape():
 
 @pytest.mark.parametrize("scheme", ["Bearer", "bearer", "BEARER", "BeArEr"])
 def test_scheme_is_case_insensitive(scheme):
-    c = build()
-    r = c.get("/private", headers={"Authorization": f"{scheme} {TOKEN}"})
+    r = build().get("/private", headers={"Authorization": f"{scheme} {TOKEN}"})
     assert r.status_code == 200
 
 
@@ -178,14 +178,12 @@ def test_a_genuine_unicode_token_still_works():
     """Rejecting non-ASCII outright would be the lazy fix. An operator who
     configures a unicode token must still be able to authenticate with it."""
     tok = "pässwörd-ünïcode"
-    c = build(token=tok)
-    r = c.get("/private",
-              headers={"Authorization": ("Bearer " + tok).encode("utf-8")})
+    r = build(token=tok).get(
+        "/private", headers={"Authorization": ("Bearer " + tok).encode("utf-8")})
     assert r.status_code == 200
 
 
 def test_non_ascii_mismatch_is_still_rejected():
-    c = build(token="pässwörd")
-    r = c.get("/private",
-              headers={"Authorization": "Bearer wröng".encode("utf-8")})
+    r = build(token="pässwörd").get(
+        "/private", headers={"Authorization": "Bearer wröng".encode("utf-8")})
     assert r.status_code == 401
