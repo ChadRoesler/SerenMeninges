@@ -46,8 +46,111 @@ jobs:
         run: python -m pytest tests/ -v
         working-directory: SerenMeninges
 
+  # ── Install shapes ──────────────────────────────────────────────────────
+  #
+  # Meninges is a LIBRARY, so this job is deliberately not the one the leaf
+  # services run. There is no app to construct; what has to hold here is the
+  # promise the rest of the family is built on:
+  #
+  #   1. CORE STAYS LIGHT. `pip install seren-meninges` must not drag in httpx.
+  #      That is a stated design goal and nothing currently enforces it - the
+  #      `test` job installs [dev], which pulls httpx and packaging, so the
+  #      bare shape is never actually exercised.
+  #   2. seren_meninges.updates must IMPORT without [updates]. Its extras are
+  #      loaded lazily inside the fetch precisely so a bare install can still
+  #      report status="unavailable" instead of exploding at import time. That
+  #      path is covered in tests only by monkeypatch, which is not the same
+  #      thing as a real install missing a real package.
+  #   3. With [updates], the checker must actually wire up - anything except
+  #      "unavailable" is a pass, since a runner may not reach PyPI.
+  install-shapes:
+    runs-on: ubuntu-latest
+    name: "Install ${{ matrix.shape.label }}"
+    strategy:
+      fail-fast: false
+      matrix:
+        shape:
+          - { label: "bare",       spec: ".",           updates: "unavailable", light: "yes" }
+          - { label: "[updates]",  spec: ".[updates]",  updates: "wired",       light: "no"  }
+          - { label: "[keyring]",  spec: ".[keyring]",  updates: "unavailable", light: "no"  }
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ${{ matrix.shape.spec }}
+        run: pip install "${{ matrix.shape.spec }}"
+        working-directory: SerenMeninges
+        env:
+          SETUPTOOLS_SCM_PRETEND_VERSION: "0.0.0"
+
+      - name: Exercise the shape OUT OF TREE
+        # cd away from the checkout first: running from the repo puts
+        # ./seren_meninges on sys.path and the installed package stops being
+        # what is under test.
+        run: |
+          cd "$(mktemp -d)"
+          python - <<'PY'
+          import asyncio, importlib.util, sys
+
+          import seren_meninges
+          from seren_meninges import get_version, resolve_token   # eager surface
+          print("core imports OK")
+
+          # updates must import with or without its extra - lazy by design
+          from seren_meninges.updates import UpdateChecker, updates_payload
+          print("seren_meninges.updates imports OK")
+
+          light = "${{ matrix.shape.light }}" == "yes"
+          if light:
+              # THE core-stays-light promise. packaging is not asserted: pip and
+              # setuptools commonly leave one lying around, so only httpx - the
+              # dep that would actually mean [updates] leaked into the core - is
+              # checked here.
+              assert importlib.util.find_spec("httpx") is None, (
+                  "bare `pip install seren-meninges` pulled httpx - the [updates] "
+                  "extra has leaked into the core dependencies"
+              )
+              print("core is light: httpx absent")
+
+          KEYS = {"status", "distribution", "installed", "latest",
+                  "update_available", "detail", "checked_at"}
+
+          # the not-wired payload must be well formed in every shape
+          d = asyncio.run(updates_payload(None, distribution="seren-meninges",
+                                          installed="0.0.0"))
+          assert set(d) == KEYS, f"key drift: {set(d) ^ KEYS}"
+          assert d["status"] == "unavailable" and d["update_available"] is False
+
+          # and a real checker, in this shape
+          c = UpdateChecker("seren-meninges", fallback_version="0.0.0")
+          s = asyncio.run(c.get())
+          assert set(s.as_dict()) == KEYS
+          assert s.update_available is False or s.status == "ok"
+
+          expected = "${{ matrix.shape.updates }}"
+          if expected == "unavailable":
+              assert s.status == "unavailable", (
+                  f"no [updates] extra, so the checker must report unavailable, got {s.status}"
+              )
+              assert "pip install" in (s.detail or ""), "say how to fix it"
+          else:
+              assert s.status != "unavailable", (
+                  "[updates] installed but the checker still reports unavailable - "
+                  "the lazy import is not finding httpx/packaging"
+              )
+          print(f"updates status={s.status} (expected shape: {expected})")
+          PY
+
   build-and-release:
-    needs: [test]
+    needs: [test, install-shapes]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
 
