@@ -70,9 +70,9 @@ jobs:
       fail-fast: false
       matrix:
         shape:
-          - { label: "bare",       spec: ".",           updates: "unavailable", light: "yes" }
-          - { label: "[updates]",  spec: ".[updates]",  updates: "wired",       light: "no"  }
-          - { label: "[keyring]",  spec: ".[keyring]",  updates: "unavailable", light: "no"  }
+          - { label: "bare",       spec: ".",           updates: "wired" }
+          - { label: "[updates]",  spec: ".[updates]",  updates: "wired" }
+          - { label: "[keyring]",  spec: ".[keyring]",  updates: "wired" }
 
     steps:
       - name: Checkout
@@ -108,17 +108,16 @@ jobs:
           from seren_meninges.updates import UpdateChecker, updates_payload
           print("seren_meninges.updates imports OK")
 
-          light = "${{ matrix.shape.light }}" == "yes"
-          if light:
-              # THE core-stays-light promise. packaging is not asserted: pip and
-              # setuptools commonly leave one lying around, so only httpx - the
-              # dep that would actually mean [updates] leaked into the core - is
-              # checked here.
-              assert importlib.util.find_spec("httpx") is None, (
-                  "bare `pip install seren-meninges` pulled httpx - the [updates] "
-                  "extra has leaked into the core dependencies"
-              )
-              print("core is light: httpx absent")
+          # httpx is a CORE dependency now, not an extra. Update checking is
+          # guaranteed present in EVERY shape - that is the whole point of the
+          # reversal. This assertion catches the regression in the other
+          # direction: someone moving httpx back behind an extra and quietly
+          # making the feature conditional again.
+          assert importlib.util.find_spec("httpx") is not None, (
+              "httpx is missing - update checking is core now, so it must be "
+              "installed in every shape. Did it get moved back to an extra?"
+          )
+          print("update-checking deps present (core, as intended)")
 
           KEYS = {"status", "distribution", "installed", "latest",
                   "update_available", "detail", "checked_at"}
@@ -135,18 +134,17 @@ jobs:
           assert set(s.as_dict()) == KEYS
           assert s.update_available is False or s.status == "ok"
 
-          expected = "${{ matrix.shape.updates }}"
-          if expected == "unavailable":
-              assert s.status == "unavailable", (
-                  f"no [updates] extra, so the checker must report unavailable, got {s.status}"
-              )
-              assert "pip install" in (s.detail or ""), "say how to fix it"
-          else:
-              assert s.status != "unavailable", (
-                  "[updates] installed but the checker still reports unavailable - "
-                  "the lazy import is not finding httpx/packaging"
-              )
-          print(f"updates status={s.status} (expected shape: {expected})")
+          KNOWN = {"ok", "disabled", "unavailable", "error"}
+          assert s.status in KNOWN, f"unknown status {s.status!r}"
+          # "unavailable" means the lazy import could not find httpx/packaging.
+          # With both in core that is now impossible by construction, so seeing
+          # it means the packaging changed underneath us. "error" is still fine
+          # - a runner with no egress is a legitimate answer.
+          assert s.status != "unavailable", (
+              f"status=unavailable with core deps installed - {s.detail}"
+          )
+
+          print(f"updates status={s.status}")
           PY
 
   build-and-release:
