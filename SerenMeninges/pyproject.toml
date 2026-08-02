@@ -21,6 +21,31 @@ dynamic = ["version"]
 dependencies = [
   "pyyaml>=6",
   "starlette>=0.37",
+  # ── Update checking is CORE, not an extra. This was a deliberate reversal ──
+  #
+  # It shipped as [updates] on the theory that phoning an index should be
+  # opt-in. That theory did not survive contact: pip records what a package
+  # REQUIRES, not which extras you asked for, so there is no way to detect
+  # consent at runtime. The code inferred it from "can I import httpx" - and
+  # six of the nine services already depend on httpx, so update checking was
+  # silently ON for most of the family and OFF for the rest, decided by
+  # transitive dependencies rather than by anyone's intent. That is the worst
+  # of both: not a guarantee in either direction.
+  #
+  # Made core because the security argument wins: a friend running a stale
+  # service with a known problem is a worse outcome than an outbound HTTPS
+  # call they did not explicitly request. Present everywhere, predictable
+  # everywhere. A config switch for people who genuinely cannot make outbound
+  # calls is the planned follow-up - `updates.enabled: false` already works
+  # today, and every service honours SEREN_<X>_UPDATES_ENABLED.
+  #
+  # httpx is capped <1 on purpose: it is pre-1.0, so a 1.0 is a signalled
+  # breaking change, and the family already ate one uncapped major (mcp 2.0.0
+  # deleted FastMCP and every service silently lost /mcp). Cap it, don't hope.
+  # packaging is uncapped - Version / InvalidVersion are the only two names we
+  # touch and they have been stable for years.
+  "httpx>=0.27,<1",
+  "packaging>=23",
 ]
 
 [project.optional-dependencies]
@@ -29,18 +54,12 @@ dependencies = [
 # Secret Service via resolve_token's keyring source.
 keyring = ["keyring>=24"]
 
-# Update checking (seren_meninges.updates) - opt-in, same shape as keyring.
-# httpx to ask the index, packaging to compare the answer. Both are LAZILY
-# imported inside the fetch, so seren_meninges.updates imports fine without
-# this extra and reports status="unavailable" instead of exploding.
-#
-# httpx is capped <1 on purpose. It is pre-1.0, so a 1.0 is a signalled
-# breaking change, and the family has already eaten one uncapped major this
-# week (mcp 2.0.0 deleted FastMCP and every service silently dropped its /mcp
-# endpoint). Cap it, don't hope. packaging is uncapped - Version /
-# InvalidVersion are the two names we touch and they have been stable for
-# years.
-updates = ["httpx>=0.27,<1", "packaging>=23"]
+# Kept as an EMPTY alias, deliberately. The dependencies moved to core (see
+# above), but `pip install 'seren-meninges[updates]'` is in installer scripts,
+# in the leaves' own [updates] extras, and in people's notes. An unknown extra
+# only earns a "does not provide the extra" warning that trains operators to
+# ignore warnings, so the name stays and resolves to nothing.
+updates = []
 
 dev = ["pytest>=8", "pytest-asyncio>=0.23", "httpx>=0.27,<1", "packaging>=23"]
 
