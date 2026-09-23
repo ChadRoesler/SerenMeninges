@@ -72,6 +72,11 @@ class ServerConfig:
     bearer_token: str = field(default="", repr=False)   # inline literal (escape hatch / Nano-floor)
     bearer_token_env: str = ""      # NAME of an env var holding the token
     bearer_token_keyring: str = ""  # "service/username" into the OS keychain
+    # The operator saying, in writing, that an open bind with no token is
+    # what they want. Without it, host beyond loopback + no token refuses to
+    # start - see seren_meninges.exposure. Also honoured from the environment
+    # as <PREFIX>_ALLOW_OPEN_LAN=1, read by the exposure check itself.
+    allow_open_lan: bool = False
 
     def resolve_bearer(self) -> str:
         """The single token this service requires of callers (or "" = open).
@@ -110,7 +115,15 @@ class ServerConfig:
             bearer_token=str(d.get("bearer_token", "") or ""),
             bearer_token_env=str(d.get("bearer_token_env", "") or ""),
             bearer_token_keyring=str(d.get("bearer_token_keyring", "") or ""),
+            allow_open_lan=_truthy(d.get("allow_open_lan", False)),
         )
+
+
+def _truthy(value: Any) -> bool:
+    """yaml `true`, or the strings people type when they mean it."""
+    if isinstance(value, bool):
+        return value
+    return str(value or "").strip().lower() in ("1", "true", "yes", "on")
 
 
 # ── the lenient loader primitives (leaves build on these) ────────────────
