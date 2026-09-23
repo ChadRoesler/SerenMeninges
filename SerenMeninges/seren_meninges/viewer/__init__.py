@@ -26,8 +26,9 @@ header with brand/subtitle, the 🔑 token modal, the shared design tokens, and
 the shell JS the bricks call - `api(path, opts)` (auto-attaches the saved
 bearer token), `escapeHtml(s)`, and `showTab(id)`.
 
-=== SKELETON === render path is real + tested (see tests/test_viewer.py). The
-shipped shell/tokens are a starting skin to refine.
+The render path is tested (tests/test_viewer.py). Every value passed in is
+substituted as-is - no HTML escaping - so callers pass CONSTANTS (a brand, an
+accent, a favicon URL of their own), never request data.
 """
 from __future__ import annotations
 

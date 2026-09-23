@@ -4,6 +4,7 @@ lenient loader primitives. The leaf-owned default_port, the resolve_bearer
 wiring into resolve_token, and the degrade-never-crash promise of read_yaml.
 """
 from seren_meninges.config import (
+    DEFAULT_HOST,
     ServerConfig,
     TlsConfig,
     apply_env_overrides,
@@ -14,10 +15,57 @@ from seren_meninges.config import (
 # ── ServerConfig ─────────────────────────────────────────────────────────
 def test_server_defaults_with_leaf_port():
     cfg = ServerConfig.from_dict({}, default_port=7422)
-    assert cfg.host == "0.0.0.0"
+    assert cfg.host == "127.0.0.1"     # loopback unless somebody says otherwise
     assert cfg.port == 7422            # leaf supplies its own default
     assert cfg.bearer_token == ""
     assert cfg.resolve_bearer() == ""  # no token configured -> open
+
+
+def test_the_library_default_is_loopback():
+    """THE GUARD. Every leaf that forgets to pass default_host must land on
+    loopback, not the LAN - the safe direction to be wrong in. Theatre used to
+    carry a whole function to undo the old 0.0.0.0 literal; this is what
+    makes that function unnecessary."""
+    assert DEFAULT_HOST == "127.0.0.1"
+    assert ServerConfig().host == "127.0.0.1"
+    assert ServerConfig.from_dict(None).host == "127.0.0.1"
+
+
+def test_a_leaf_can_choose_the_lan():
+    """Observatory is the per-node plane and wants every interface. It says so
+    on its own line, the same way a leaf says its port."""
+    cfg = ServerConfig.from_dict({}, default_port=7777, default_host="0.0.0.0")
+    assert cfg.host == "0.0.0.0"
+
+
+def test_an_explicit_host_beats_the_leaf_default():
+    """Widening is a thing you did. An operator who wrote host: 0.0.0.0 gets
+    0.0.0.0 whatever the leaf would have preferred, and vice versa."""
+    assert ServerConfig.from_dict({"host": "0.0.0.0"}).host == "0.0.0.0"
+    assert ServerConfig.from_dict({"host": "127.0.0.1"},
+                                  default_host="0.0.0.0").host == "127.0.0.1"
+
+
+def test_a_null_host_counts_as_unset():
+    """yaml `host:` with nothing after it used to become the string "None"
+    and fail to bind. Present-but-empty is the operator saying nothing."""
+    assert ServerConfig.from_dict({"host": None}).host == "127.0.0.1"
+    assert ServerConfig.from_dict({"host": ""}).host == "127.0.0.1"
+
+
+def test_a_bad_port_falls_to_the_default_instead_of_crashing(caplog):
+    """The module promises never to crash boot on a malformed key, and the env
+    path already kept that promise; the yaml path did not."""
+    cfg = ServerConfig.from_dict({"port": "7422a"}, default_port=7422)
+    assert cfg.port == 7422
+    assert "isn't an int" in caplog.text
+    assert ServerConfig.from_dict({"port": None}, default_port=5).port == 5
+
+
+def test_a_non_mapping_server_block_is_ignored():
+    # `server: hello` is not a block; it is also not a reason to crash.
+    cfg = ServerConfig.from_dict("hello", default_port=9)  # type: ignore[arg-type]
+    assert (cfg.host, cfg.port) == ("127.0.0.1", 9)
 
 
 def test_server_reads_values():
@@ -81,6 +129,15 @@ def test_read_yaml_malformed_returns_empty(tmp_path):
     p = tmp_path / "bad.yaml"
     p.write_text("server: [1, 2")
     assert read_yaml(str(p)) == {}
+
+
+def test_read_yaml_non_mapping_document_returns_empty(tmp_path):
+    """A file holding a bare word or a list parses, and the annotation says
+    dict. It has to BE a dict, or the leaf's `.get("server")` is the crash."""
+    for text in ("foo\n", "- a\n- b\n", "42\n"):
+        p = tmp_path / "odd.yaml"
+        p.write_text(text)
+        assert read_yaml(str(p)) == {}, text
 
 
 # ── apply_env_overrides ──────────────────────────────────────────────────

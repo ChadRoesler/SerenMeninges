@@ -11,19 +11,32 @@ loci/memory). Meninges owns the shared shape; the leaf owns the rest.
 Plain dataclasses, no pydantic - matches the family's existing config style
 and keeps the core dependency-light (pyyaml is the only runtime need here).
 
-=== SKELETON === shapes + the token wiring are real; a leaf will extend
-`load_*` with its own sections. Wire tests in the leaf (or here) before release.
+ON THE HOST DEFAULT (2.3.0): loopback. The bind address used to be a literal
+"0.0.0.0" inside `from_dict` with no way for a leaf to say otherwise, while
+`default_port` was a parameter precisely because ports are leaf-owned. Hosts
+are leaf-owned too, and the safe direction to be wrong in is inward: a leaf
+that forgets to pass `default_host` now gets 127.0.0.1, not the LAN. The one
+service that genuinely wants every interface (Observatory, the per-node
+plane) says so in its own file, where a reader can see it was chosen. An
+explicit `host:` in yaml is honoured either way - widening should be a thing
+you did, not a thing that happened.
 """
 from __future__ import annotations
 
 import logging
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from .credentials import resolve_token
 
 log = logging.getLogger("seren_meninges.config")
+
+#: The bind address a leaf gets when neither it nor the operator said. Loopback,
+#: because every Seren service is reachable by the person in front of the box
+#: before it is reachable by anyone else - and a service that should be on the
+#: LAN (Observatory) passes ``default_host="0.0.0.0"`` on its own line.
+DEFAULT_HOST = "127.0.0.1"
 
 
 # ── the shared blocks ────────────────────────────────────────────────────
@@ -46,13 +59,17 @@ class ServerConfig:
 
     The three token keys are mutually-exclusive-by-convention; `resolve_bearer`
     applies the precedence (see credentials.resolve_token). A leaf passes its
-    own `default_port` to `from_dict` so 7420/7422/7423 stay leaf-owned.
+    own `default_port` to `from_dict` so 7420/7422/7423 stay leaf-owned, and
+    its own `default_host` if loopback is the wrong answer for it.
     """
-    host: str = "0.0.0.0"
+    host: str = DEFAULT_HOST
     port: int = 0
 
-    # token pointers — at most one in practice (see resolve_bearer)
-    bearer_token: str = ""          # inline literal (escape hatch / Nano-floor)
+    # token pointers — at most one in practice (see resolve_bearer).
+    # The inline literal is the one that IS the secret, so it is kept out of
+    # the dataclass repr: a `log.info("%s", cfg)` or a traceback that dumps
+    # locals must never print it. The other two are pointers and stay visible.
+    bearer_token: str = field(default="", repr=False)   # inline literal (escape hatch / Nano-floor)
     bearer_token_env: str = ""      # NAME of an env var holding the token
     bearer_token_keyring: str = ""  # "service/username" into the OS keychain
 
@@ -66,11 +83,30 @@ class ServerConfig:
         )
 
     @classmethod
-    def from_dict(cls, d: Optional[dict[str, Any]], *, default_port: int = 0) -> "ServerConfig":
-        d = d or {}
+    def from_dict(cls, d: Optional[dict[str, Any]], *,
+                  default_port: int = 0,
+                  default_host: str = DEFAULT_HOST) -> "ServerConfig":
+        """Build the block from a yaml mapping, leniently.
+
+        `default_host` / `default_port` are what the LEAF wants when the
+        operator said nothing. A `host:` that is present but empty or null
+        counts as "said nothing" - the old code turned yaml `host:` into the
+        string "None" and then failed to bind. A port that is not an int is
+        logged and falls back to the default rather than crashing boot, which
+        is the promise the module docstring makes and the env path already
+        kept.
+        """
+        d = d if isinstance(d, dict) else {}
+        host = d.get("host")
+        raw_port = d.get("port", default_port)
+        try:
+            port = int(raw_port) if raw_port not in (None, "") else default_port
+        except (TypeError, ValueError):
+            log.warning("server.port=%r isn't an int - using %d", raw_port, default_port)
+            port = default_port
         return cls(
-            host=str(d.get("host", "0.0.0.0")),
-            port=int(d.get("port", default_port) or default_port),
+            host=str(host) if host else default_host,
+            port=port or default_port,
             bearer_token=str(d.get("bearer_token", "") or ""),
             bearer_token_env=str(d.get("bearer_token_env", "") or ""),
             bearer_token_keyring=str(d.get("bearer_token_keyring", "") or ""),
@@ -91,6 +127,14 @@ def read_yaml(path: str) -> dict[str, Any]:
     try:
         with open(path, encoding="utf-8") as fh:
             data = yaml.safe_load(fh)
+        if data and not isinstance(data, dict):
+            # A document that is a bare scalar or a list parses fine and is
+            # still not a config. Returning it would hand the leaf something
+            # `.get("server")` raises on, which is a crash from a file that
+            # merely looks odd.
+            log.warning("config at %s is not a mapping (%s) - using defaults",
+                        path, type(data).__name__)
+            return {}
         return data or {}
     except FileNotFoundError:
         log.info("no config at %s - using defaults", path)

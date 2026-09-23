@@ -196,11 +196,16 @@ async def test_force_refetches():
 
 
 async def test_expired_ttl_refetches():
+    """An expired TTL means a refresh happens - in the BACKGROUND. The stale
+    hit returns instantly with the old answer; the fetch lands a tick later.
+    (It used to be awaited inline, which is the stall test_updates_warm pins
+    the absence of.)"""
     calls = []
     c = UpdateChecker(GHOST, fallback_version="1.0.0", ttl_seconds=0,
                       fetcher=fetcher_returning(payload("2.0.0"), calls))
     await c.get()
     await c.get()
+    await asyncio.sleep(0.05)
     assert len(calls) == 2
 
 
@@ -230,7 +235,8 @@ async def test_payload_without_a_checker_says_unavailable():
     assert d["status"] == STATUS_UNAVAILABLE
     assert d["installed"] == "1.2.0"
     assert d["update_available"] is False
-    assert "seren-loci[updates]" in d["detail"], "tell them how to fix it"
+    assert "seren-loci" in d["detail"] and "startup" in d["detail"], (
+        "tell them where to look - the lifespan, not a retired extra")
 
 
 async def test_payload_with_a_checker_reports_the_answer():
