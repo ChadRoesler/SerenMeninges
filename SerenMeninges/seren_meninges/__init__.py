@@ -11,6 +11,8 @@ enough to be boring:
   - get_version()            the one version-getter
   - UpdateChecker            "is there a newer me" - get_version's far half
   - bearer_auth_middleware   one constant-time auth implementation
+  - enforce_server()         refuse an open bind with no token, loudly, with
+                             the three ways out; allow_open_lan overrides
   - render_shell()           the viewer's shared shell + design tokens
 
 Anything redesign-prone (per-service routes, schemas, storage, RRF, viewer
@@ -40,6 +42,7 @@ __all__ = [
     #   from seren_meninges.auth import bearer_auth_middleware
     #   from seren_meninges.viewer import render_shell
     #   from seren_meninges.updates import UpdateChecker
+    #   from seren_meninges.exposure import enforce_server   # before uvicorn.run
 ]
 
 try:

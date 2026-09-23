@@ -21,6 +21,12 @@ construction:
   Pure ASGI: it covers HTTP **and WebSocket** scopes, so a leaf that grows a
   socket route does not quietly grow an unauthenticated one. A 401 carries
   `WWW-Authenticate: Bearer`.
+- **`enforce_server()`** — the startup check every service runs before it
+  listens. A bind beyond loopback with no token **refuses to start** (exit 78,
+  `EX_CONFIG`) and prints the situation with all three ways out: stay on
+  loopback, put a token on it, or say `allow_open_lan: true` (or
+  `SEREN_<X>_ALLOW_OPEN_LAN=1`) and get a banner every boot instead. Widening
+  is a thing you did, not a thing that happened.
 - **`render_shell()`** — the viewer's shared shell + design tokens (leaves keep
   their own tabs).
 
