@@ -1,5 +1,5 @@
 # ========================================================================
-#  seren-meninges — the Seren shared core (SKELETON pyproject)
+#  seren-meninges — the Seren shared core
 #  Chad owns release.yml / Trusted Publishing wiring; this is just the
 #  package shape: deps minimal, the OS-keychain backend gated behind an extra.
 # ========================================================================
@@ -15,9 +15,11 @@ license = { text = "GPL-3.0-or-later" }
 requires-python = ">=3.10"
 dynamic = ["version"]
 
-# Core stays light. pyyaml for config; starlette ONLY if you keep the
-# BaseHTTPMiddleware form of auth.py (it's already in every leaf via FastAPI,
-# so it adds nothing to the real install). Drop it if you go pure-ASGI.
+# Core stays light. pyyaml for config; starlette for the auth middleware's
+# connection parsing and JSON response (auth is pure ASGI now, but still
+# leans on starlette's HTTPConnection so one parser serves both scopes).
+# It is already in every leaf via FastAPI, so it adds nothing to the real
+# install.
 dependencies = [
   "pyyaml>=6",
   "starlette>=0.37",
@@ -53,6 +55,11 @@ dependencies = [
 # to env-var tokens; desktops install it for Credential Manager / Keychain /
 # Secret Service via resolve_token's keyring source.
 keyring = ["keyring>=24"]
+
+# The OS trust store for outbound TLS on a corp-proxied box. UpdateChecker
+# honours `trust_system_store` through this; the leaves carry the same extra
+# under the same name so `pip install 'seren-<x>[corp]'` means one thing.
+corp = ["truststore>=0.9"]
 
 # Kept as an EMPTY alias, deliberately. The dependencies moved to core (see
 # above), but `pip install 'seren-meninges[updates]'` is in installer scripts,

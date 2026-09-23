@@ -1,27 +1,28 @@
 # SerenMeninges
 
-The connective tissue of the Seren brain — the shared core for **SerenMemory**,
-**SerenLoci**, and **SerenCorpusCallosum**. One installable package so the
-things that *must* be identical across the three are identical by construction:
+The connective tissue of the Seren brain — the shared core every Seren
+service wears, from the memory hemispheres to the control plane to the
+viewers. One installable package so the things that *must* be identical
+across the family are identical by construction:
 
 - **`resolve_token()`** — credentials resolution. Config holds a *pointer* to a
   secret (env var name, OS-keychain ref) or, as a deliberate escape hatch, an
   inline literal. Never the secret in plaintext unless you choose it.
-- **`ServerConfig` / `TlsConfig`** + a lenient yaml/env loader.
+- **`ServerConfig` / `TlsConfig`** + a lenient yaml/env loader. The bind
+  address defaults to **127.0.0.1** (since 2.3.0); a leaf that belongs on the
+  LAN passes `default_host="0.0.0.0"` to `from_dict`, the same way it passes
+  its `default_port`. An explicit `host:` in the yaml is honoured either way.
 - **`get_version()`** — the one version-getter.
-- **`bearer_auth_middleware()`** — one constant-time bearer-auth implementation.
+- **`bearer_auth_middleware()`** — one constant-time bearer-auth implementation,
+  pure ASGI, covering HTTP and WebSocket scopes alike.
+- **`UpdateChecker`** — is there a newer release of me? Cached, refreshed in
+  the background, never a wait on the request path once warm.
 - **`render_shell()`** — the viewer's shared shell + design tokens (leaves keep
   their own tabs).
 
 The governing rule: **core holds contracts and mechanisms, never anything
-redesign-prone.** See [`SPEC.md`](SPEC.md) for the full design (the
-inbound/outbound token symmetry, the version-coupling contract, the guardrail
-list), and **[`IMPLEMENTING.md`](IMPLEMENTING.md) for the step-by-step: how to
-publish this and how to adopt it into a leaf.**
-
-> Status: `credentials`, `version`, `config`, and the `viewer` baseplate are
-> real and tested (38 tests). `auth` is the one real-shaped skeleton left to
-> test during the build pass.
+redesign-prone.** Each module's docstring carries the reasoning for the piece
+it owns; the package README under `SerenMeninges/` has the usage detail.
 
 ## License
 

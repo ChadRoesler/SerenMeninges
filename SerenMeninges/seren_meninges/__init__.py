@@ -1,9 +1,10 @@
 """
 SerenMeninges — the connective tissue of the Seren brain.
 
-The shared core for the three hemisphere services (SerenMemory, SerenLoci,
-SerenCorpusCallosum). It holds CONTRACTS and MECHANISMS only - the things
-that must be identical across all three and are stable enough to be boring:
+The shared core every Seren service wears - the memory hemispheres, the
+control plane, the tools, the viewers. It holds CONTRACTS and MECHANISMS
+only - the things that must be identical across the family and are stable
+enough to be boring:
 
   - resolve_token()         credentials: config holds a pointer, not a secret
   - ServerConfig/TlsConfig   the shared config blocks + lenient loader
@@ -13,8 +14,8 @@ that must be identical across all three and are stable enough to be boring:
   - render_shell()           the viewer's shared shell + design tokens
 
 Anything redesign-prone (per-service routes, schemas, storage, RRF, viewer
-TAB content) stays in the leaf repos. See SPEC.md for the full rationale and
-the version-coupling contract.
+TAB content) stays in the leaf repos. The rationale for each piece lives in
+that module's own docstring.
 
 Light imports only at package load (version/credentials/config). `auth` and
 `viewer` are imported from their submodules on demand so the core stays
@@ -38,7 +39,7 @@ __all__ = [
     # imported on demand from submodules:
     #   from seren_meninges.auth import bearer_auth_middleware
     #   from seren_meninges.viewer import render_shell
-    #   from seren_meninges.updates import UpdateChecker   # needs [updates]
+    #   from seren_meninges.updates import UpdateChecker
 ]
 
 try:
