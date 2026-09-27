@@ -32,4 +32,4 @@ it owns; the package README under `SerenMeninges/` has the usage detail.
 
 ## License
 
-GPL-3.0-or-later.
+AGPL-3.0-or-later.
