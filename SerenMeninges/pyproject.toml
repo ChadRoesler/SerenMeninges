@@ -1,6 +1,6 @@
 # ========================================================================
 #  seren-meninges — the Seren shared core
-#  the user owns release.yml / Trusted Publishing wiring; this is just the
+#  Release wiring (release.yml, Trusted Publishing) lives apart; this is just the
 #  package shape: deps minimal, the OS-keychain backend gated behind an extra.
 # ========================================================================
 [build-system]
