@@ -131,6 +131,41 @@ button {
         font-weight: 600;
     }
 
+/* The header's buttons (the 🔑 Token, a leaf's ⟳) are one size: 34px tall,
+   the same padding, the glyph centred. They were whatever their text made
+   them, so the two sat side by side at two heights on every viewer (Chad,
+   20 Oct 2026: "parity on token and refresh button sizes"). A leaf that
+   wants bigger targets on a touchscreen overrides this in its own media
+   query (Lodestar's glance screen keeps its 36px squares). */
+header.seren-head button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 34px;
+    min-width: 34px;
+    padding: 0 12px;
+    line-height: 1;
+    /* The shell's own radius, not the leaf's --radius: Lodestar draws its
+       cards at 6px and its 🔑 Token came out tighter-cornered than every
+       other viewer's (Chad, 20 Oct 2026). */
+    border-radius: 10px;
+    /* Root-relative on purpose. `font: inherit` took the leaf's body size,
+       and Memory, Loci, Callosum and the Observatory set theirs to 14px
+       while the Workbench, Hippocampus and Lodestar leave it at 16px: the
+       same rule drew "🔑 Token" two sizes across the family (Chad, 20 Oct
+       2026, two screenshots and a zoom check later). */
+    font-size: .875rem;
+}
+
+    /* The reload glyph. Every leaf's ⟳ is <button title="Reload">; the system
+       font draws U+27F3 small, so beside "🔑 Token" the two boxes matched and
+       their insides did not (Chad, 20 Oct 2026: "it's the font inside the
+       thing"). A leaf whose button says something else adds class="icon". */
+    header.seren-head button[title="Reload"],
+    header.seren-head button.icon {
+        font-size: 1.3rem;
+    }
+
 .tabbar {
     display: flex;
     gap: 2px;
