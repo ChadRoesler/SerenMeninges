@@ -22,6 +22,8 @@
 --radius: 10px;
 --gap: 14px;
 --bg-fade:color-mix(in srgb, var(--accent) 18%, var(--bg));
+/* native controls (scrollbars, pickers, select popups) drawn dark too */
+color-scheme: dark;
 }
 
 * {
@@ -213,6 +215,13 @@ input:not([type="checkbox"]):not([type="radio"]), select, textarea {
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 8px 10px;
+}
+
+/* The popup list is drawn by the OS, which falls back to system colours
+   (white) whenever the select's own background is transparent. */
+select option {
+    background: var(--surface);
+    color: var(--text);
 }
 
 input[type="checkbox"], input[type="radio"] {
