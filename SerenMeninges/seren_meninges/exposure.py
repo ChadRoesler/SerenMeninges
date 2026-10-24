@@ -30,9 +30,10 @@ And the fourth outcome, which is not a verdict: REFUSED, exit code 78
 (EX_CONFIG - "configuration error" - the sysexits code a supervisor can read
 and choose not to restart-loop on).
 
-A service that has NO bearer support at all (Margin, by design; Symposium's
-loopback shim) passes `supports_token=False` and gets a message that does not
-tell the operator to configure a token that does not exist.
+A service that has NO bearer support at all (Symposium's loopback shim) passes
+`supports_token=False` and gets a message that does not tell the operator to
+configure a token that does not exist. (Margin was one until its status viewer
+arrived; it has an optional bearer now, available and never required.)
 """
 from __future__ import annotations
 
