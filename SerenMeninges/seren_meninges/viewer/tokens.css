@@ -7,13 +7,25 @@
     /* the single per-service override */
     --accent: {{ACCENT}}
 ;
-/* neutral surface palette (dark homelab dashboard) */
---bg: #14141f;
---surface: #1f2036;
---surface-2: #262844;
---border: #33365a;
+/* THE WALLS, tinted by the room (24 Oct 2026). Every surface carries 5% of
+   the service's own accent - the borders and quiet text a little more - over a
+   neutral dark, so each viewer reads as its own room and the family still
+   reads as one building. Chosen from a mock of all twelve side by side:
+   "5% is the sweetspot". A leaf no longer sets these; it inherits them, and
+   the leaf names (--bg-2, --panel, --line, --muted, --faint) are aliases. */
+--tint: 5%;
+--bg: color-mix(in srgb, var(--accent) calc(var(--tint) * 0.6), #121219);
+--bg-2: color-mix(in srgb, var(--accent) calc(var(--tint) * 0.8), #17171f);
+--surface: color-mix(in srgb, var(--accent) var(--tint), #1d1d27);
+--surface-2: color-mix(in srgb, var(--accent) calc(var(--tint) * 1.3), #25252f);
+--border: color-mix(in srgb, var(--accent) calc(var(--tint) * 2.2), #35353f);
 --text: #e9ebff;
---text-dim: #9aa0c8;
+--text-dim: color-mix(in srgb, var(--accent) calc(var(--tint) * 2.6), #a3a3ad);
+--faint: color-mix(in srgb, var(--accent) calc(var(--tint) * 2.6), #6f6f7c);
+--panel: var(--surface);
+--panel-2: var(--surface-2);
+--line: var(--border);
+--muted: var(--text-dim);
 --danger: #e5534b;
 --ok: #3fb950;
 /* type + spacing */
@@ -208,14 +220,7 @@ header.seren-head button {
         display: block;
     }
 
-input:not([type="checkbox"]):not([type="radio"]), select, textarea {
-    font: inherit;
-    color: var(--text);
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 8px 10px;
-}
+/* fields: see "the controls" at the end of this file */
 
 /* The popup list is drawn by the OS, which falls back to system colours
    (white) whenever the select's own background is transparent. */
@@ -267,3 +272,134 @@ input[type="checkbox"], input[type="radio"] {
     color: var(--text-dim);
     font-size: .85rem;
 }
+
+/* ── one fold mark (24 Oct 2026: "the expandable things we have a variety of
+   types of iconography, we need to condense them into one") ──────────────
+   Every <details> gets the same small chevron: pointing right while folded,
+   down when open. A summary that is a button of its own (a "?" bubble) opts
+   out with class="no-chev". Something that folds without <details> puts a
+   <span class="seren-chev"></span> in its toggle and marks the toggle open
+   with aria-expanded="true", .open or [open]. */
+details > summary { list-style: none; cursor: pointer; }
+details > summary::-webkit-details-marker { display: none; }
+details > summary:not(.no-chev)::before,
+.seren-chev {
+    content: "";
+    display: inline-block;
+    flex: none;
+    width: .38em;
+    height: .38em;
+    margin: 0 .55em .12em .1em;
+    border-right: 1.6px solid currentColor;
+    border-bottom: 1.6px solid currentColor;
+    transform: rotate(-45deg);
+    transition: transform .15s ease;
+    opacity: .75;
+    vertical-align: middle;
+}
+details[open] > summary:not(.no-chev)::before,
+[aria-expanded="true"] .seren-chev, .open > .seren-chev, .open .seren-chev:first-child, [open] > .seren-chev,
+.seren-chev.open {
+    transform: rotate(45deg);
+}
+
+/* ── the controls (24 Oct 2026) ───────────────────────────────────────────
+   One button, one field, one combo box, one file picker for every viewer,
+   taken from the Lyceum's ("lets use that style across the board"). They
+   live here so a leaf never draws its own: four leaves had four buttons -
+   the Hippocampus outlined and bigger, Memory/Loci/the Callosum filled with
+   the accent, the Lyceum neutral with one filled "do it" - and three combo
+   boxes put their arrow in three places.
+
+   .btn            a button: quiet, the accent on hover
+   .btn.primary    THE thing to do on that view: filled with the accent
+   .btn.ghost      no fill, for a row of lesser actions
+   .btn.danger     deletes or stops something
+   .btn.small, .small-btn / .btn.big   sizes
+   A plain <button> keeps the shell's look above; a leaf's own button
+   (a card, a tab, a map control) styles itself. */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font: inherit;
+    font-size: .875rem;
+    line-height: 1.25;
+    color: var(--text);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 7px 14px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: border-color .15s, background-color .15s, filter .15s;
+}
+.btn:hover { border-color: var(--accent); text-decoration: none; }
+.btn:disabled, .btn[disabled] { opacity: .5; cursor: not-allowed; }
+.btn.primary { background: var(--accent); border-color: var(--accent);
+               color: color-mix(in srgb, var(--accent) 12%, #0b0c10); font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.1); }
+.btn.ghost { background: transparent; }
+.btn.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 50%, transparent); }
+.btn.danger:hover { border-color: var(--danger); }
+.btn.small, .small-btn { padding: 4px 10px; font-size: 12.5px; border-radius: 7px; }
+.btn.big { padding: 11px 26px; font-size: 15px; }
+
+/* fields: one height, one corner, one colour */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), select, textarea {
+    font: inherit;
+    font-size: .875rem;
+    line-height: 1.25;
+    color: var(--text);
+    background-color: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 7px 10px;
+}
+input:not([type="checkbox"]):not([type="radio"]):focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+::placeholder { color: var(--faint); opacity: 1; }
+
+/* the combo box: the browser's own arrow sat wherever each browser liked, so
+   it is drawn here - two strokes in the theme's dim text colour, inset as far
+   as the text is, with room kept so a long option never runs under it */
+select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    padding-right: 30px;
+    cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, var(--text-dim) 50%),
+                      linear-gradient(135deg, var(--text-dim) 50%, transparent 50%);
+    background-position: calc(100% - 16px) 52%, calc(100% - 11px) 52%;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+}
+select:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); }
+
+/* the file picker: a field, its button a small .btn */
+input[type="file"] {
+    font: inherit;
+    font-size: .875rem;
+    color: var(--text-dim);
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 4px 6px;
+    max-width: 100%;
+}
+input[type="file"]::file-selector-button {
+    font: inherit;
+    font-size: 12.5px;
+    color: var(--text);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 4px 10px;
+    margin-right: 10px;
+    cursor: pointer;
+}
+input[type="file"]::file-selector-button:hover { border-color: var(--accent); }
