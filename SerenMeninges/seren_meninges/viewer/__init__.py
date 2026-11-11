@@ -24,7 +24,10 @@ Lego, not copy-paste:
 The baseplate provides (so the bricks don't have to): the page skeleton, the
 header with brand/subtitle, the 🔑 token modal, the shared design tokens, and
 the shell JS the bricks call - `api(path, opts)` (auto-attaches the saved
-bearer token), `escapeHtml(s)`, and `showTab(id)`.
+bearer token), `escapeHtml(s)`, `showTab(id)`, and the polling pair:
+`watch(url, ms, paint)` (poll, and repaint only when the answer changed;
+returns a stop()) and `keepingScroll(el, fn)` (repaint without moving the
+reader).
 
 The render path is tested (tests/test_viewer.py). Every value passed in is
 substituted as-is - no HTML escaping - so callers pass CONSTANTS (a brand, an

@@ -89,6 +89,71 @@ document.addEventListener("DOMContentLoaded", () => {
   if (first) showTab(first.dataset.tab);
 });
 
+// ── polling without the jolt ─────────────────────────────────────────
+// Every page here polls something and repaints it. Repainting an answer
+// that did not change shoves a reader back to the top and swaps the node
+// out from under an open inspector, so the rule lives here once: redraw
+// only when the answer changed, and put the scroll back when you do.
+
+// watch(url, ms, paint[, onError]) - fetch `url` through api() now and then
+// every `ms`; call paint(data) only when the JSON differs from the last one
+// painted. `url` may be a function returning the path (or a falsy value to
+// sit a round out), for a page whose question moves. A failed fetch, or a
+// paint that throws, goes to onError(e) and the next good answer is painted
+// even if it matches the last. A slow answer is never overlapped by the next
+// tick. Returns stop(); stop.check() asks again right now (after a POST,
+// say) and resolves when that round is done.
+function watch(url, ms, paint, onError){
+  let sig = null, stopped = false, running = null;
+  async function round(){
+    try {
+      const path = typeof url === "function" ? url() : url;
+      if (!path) return;
+      const data = await api(path);
+      if (stopped) return;
+      const s = path + "\n" + JSON.stringify(data);
+      if (s === sig) return;
+      await paint(data);
+      sig = s;
+    } catch (e) {
+      sig = null;
+      if (onError && !stopped) onError(e);
+    }
+  }
+  function check(){
+    if (stopped) return Promise.resolve();
+    if (!running) running = round().finally(() => { running = null; });
+    return running;
+  }
+  check();
+  const timer = setInterval(check, ms);
+  function stop(){ stopped = true; clearInterval(timer); }
+  stop.check = check;
+  return stop;
+}
+
+// keepingScroll(el, fn) - run fn (a repaint) and put the scroll back where
+// it was: el's and the window's. `el` is an element or a selector; give a
+// selector when fn replaces the node, and the new one is found afterwards.
+// Waits for fn if it returns a promise; returns whatever fn returns.
+function keepingScroll(el, fn){
+  const find = () => typeof el === "string" ? document.querySelector(el) : el;
+  const was = find();
+  const top = was ? was.scrollTop : 0, left = was ? was.scrollLeft : 0;
+  const wx = window.scrollX, wy = window.scrollY;
+  const back = () => {
+    const now = find();
+    if (now) { now.scrollTop = top; now.scrollLeft = left; }
+    window.scrollTo(wx, wy);
+  };
+  let out;
+  try { out = fn(); }
+  catch (e) { back(); throw e; }
+  if (out && typeof out.then === "function") return out.finally(back);
+  back();
+  return out;
+}
+
 // ── leaf-supplied tab logic ──────────────────────────────────────────
 //{{EXTRA_JS}}
         </script>
