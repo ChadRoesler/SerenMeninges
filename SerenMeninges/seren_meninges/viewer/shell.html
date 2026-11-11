@@ -95,40 +95,72 @@ document.addEventListener("DOMContentLoaded", () => {
 // out from under an open inspector, so the rule lives here once: redraw
 // only when the answer changed, and put the scroll back when you do.
 
-// watch(url, ms, paint[, onError]) - fetch `url` through api() now and then
-// every `ms`; call paint(data) only when the JSON differs from the last one
-// painted. `url` may be a function returning the path (or a falsy value to
-// sit a round out), for a page whose question moves. A failed fetch, or a
-// paint that throws, goes to onError(e) and the next good answer is painted
-// even if it matches the last. A slow answer is never overlapped by the next
-// tick. Returns stop(); stop.check() asks again right now (after a POST,
-// say) and resolves when that round is done.
-function watch(url, ms, paint, onError){
-  let sig = null, stopped = false, running = null;
+// watch(url, ms, paint[, opts]) - fetch `url` now and then every `ms`; call
+// paint(data) only when the answer differs from the last one painted. `url`
+// may be a function returning the path (or a falsy value to sit a round out),
+// for a page whose question moves or only matters on one tab. A slow answer
+// is never overlapped by the next tick. Returns stop().
+//
+// `opts` is an onError function, or an object with any of:
+//   onError(e)        a failed fetch, or an each/paint that threw. The next
+//                     good answer is painted even if it matches the last.
+//   signature(data)   what "the same answer" means; a string. Default: the
+//                     whole JSON. Leave out the fields that only tick (an
+//                     age, a clock) and they stop causing repaints.
+//   fetch(path)       how to get the answer. Default: api(). For a page with
+//                     its own fetcher, or one answer made of two requests.
+//   each(data, changed)  every good answer, before any paint: the things
+//                     that follow the clock without a redraw (a counter, a
+//                     "refreshed at", ticking an age in place).
+//   whileVisible      true: no rounds while the tab is hidden, and one the
+//                     moment it is shown again.
+//
+// stop.check() asks again right now (after a POST, say) and resolves once an
+// answer asked for after the call is in. stop.every(ms) changes the rate.
+function watch(url, ms, paint, opts){
+  const o = typeof opts === "function" ? { onError: opts } : (opts || {});
+  const get = o.fetch || api, sigOf = o.signature || JSON.stringify;
+  let sig = null, stopped = false, running = null, queued = null, timer = null;
   async function round(){
     try {
       const path = typeof url === "function" ? url() : url;
       if (!path) return;
-      const data = await api(path);
+      const data = await get(path);
       if (stopped) return;
-      const s = path + "\n" + JSON.stringify(data);
-      if (s === sig) return;
+      const s = path + "\n" + sigOf(data);
+      const changed = s !== sig;
+      if (o.each) await o.each(data, changed);
+      if (!changed) return;
       await paint(data);
       sig = s;
     } catch (e) {
       sig = null;
-      if (onError && !stopped) onError(e);
+      if (o.onError && !stopped) o.onError(e);
     }
   }
+  // check() during a round does not settle for that round's answer: it may
+  // have been asked before the POST the caller just made. One more round is
+  // run after it, shared by everyone who asked meanwhile.
   function check(){
     if (stopped) return Promise.resolve();
-    if (!running) running = round().finally(() => { running = null; });
+    if (running) return queued || (queued = running.then(() => { queued = null; return check(); }));
+    running = round().finally(() => { running = null; });
     return running;
   }
-  check();
-  const timer = setInterval(check, ms);
-  function stop(){ stopped = true; clearInterval(timer); }
-  stop.check = check;
+  function tick(){ if (!running && !(o.whileVisible && document.hidden)) check(); }
+  function shown(){ if (!document.hidden) check(); }
+  function every(n){
+    if (n === ms && timer !== null) return;
+    ms = n; clearInterval(timer);
+    if (!stopped) timer = setInterval(tick, ms);
+  }
+  function stop(){
+    stopped = true; clearInterval(timer);
+    if (o.whileVisible) document.removeEventListener("visibilitychange", shown);
+  }
+  if (o.whileVisible) document.addEventListener("visibilitychange", shown);
+  tick(); every(ms);
+  stop.check = check; stop.every = every;
   return stop;
 }
 

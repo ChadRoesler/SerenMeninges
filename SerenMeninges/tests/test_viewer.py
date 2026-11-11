@@ -92,8 +92,12 @@ let answers = [];                       // queue: a value, or an Error to throw
 const node = () => ({ addEventListener(){}, classList: { add(){}, remove(){}, toggle(){} },
                       scrollTop: 0, scrollLeft: 0 });
 const nodes = {};
+const listeners = {};
 globalThis.document = {
-  getElementById: () => node(), addEventListener(){},
+  hidden: false,
+  getElementById: () => node(),
+  addEventListener(ev, fn){ (listeners[ev] ||= []).push(fn); },
+  removeEventListener(ev, fn){ listeners[ev] = (listeners[ev] || []).filter(f => f !== fn); },
   querySelectorAll: () => [], querySelector: sel => nodes[sel] || null,
 };
 globalThis.localStorage = { getItem: () => "", setItem(){}, removeItem(){} };
@@ -136,6 +140,50 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   where = "/c"; await stop.check(); where = "/d"; await stop.check(); await stop.check();
   stop();
   out.moved = painted;
+
+  // opts.signature: a field that only ticks is left out, so it never repaints;
+  // opts.each still hears every answer, and is told whether it changed
+  painted = []; const heard = [];
+  answers = [{ n: 1, age: 1 }, { n: 1, age: 2 }, { n: 1, age: 3 }, { n: 2, age: 4 }];
+  stop = watch("/e", 10, d => painted.push(d.age), {
+    signature: d => String(d.n), each: (d, changed) => heard.push([d.age, changed]) });
+  await sleep(120); stop();
+  out.sig_painted = painted;
+  out.each_first4 = heard.slice(0, 4);
+  out.each_before_paint = heard.length >= painted.length;
+
+  // opts.fetch: the page's own fetcher, not api()
+  painted = []; const asked = []; const before2 = calls.length;
+  stop = watch("/f", 1000, d => painted.push(d.mine), { fetch: async p => { asked.push(p); return { mine: 9 }; } });
+  await stop.check(); stop();
+  out.own_fetch = [asked, painted, calls.length === before2];
+
+  // opts.whileVisible: nothing while hidden, one round the moment it is shown
+  answers = [{ n: 5 }]; painted = [];
+  document.hidden = true;
+  stop = watch("/g", 10, d => painted.push(d.n), { whileVisible: true });
+  await sleep(50);
+  out.hidden_quiet = painted.length === 0;
+  document.hidden = false; (listeners.visibilitychange || []).forEach(f => f());
+  await sleep(5);
+  out.shown = painted;
+  stop();
+  out.unhooked = (listeners.visibilitychange || []).length === 0;
+
+  // stop.every: the rate changes
+  answers = [{ n: 1 }]; let n0 = calls.length;
+  stop = watch("/h", 100000, () => {});
+  await sleep(40); out.slow = calls.length - n0;          // just the first round
+  stop.every(10); await sleep(80); stop();
+  out.faster = calls.length - n0 > 3;
+
+  // check() during a slow round waits for a round asked AFTER it, not the one in flight
+  let served = 0; painted = [];
+  stop = watch("/i", 100000, d => painted.push(d.v), { fetch: async () => { const v = ++served; await sleep(30); return { v }; } });
+  await sleep(5);                                          // round 1 is in flight
+  const [a, b] = [stop.check(), stop.check()];
+  await Promise.all([a, b]); stop();
+  out.fresh_after_check = [served, painted, a === b];
 
   // keepingScroll: an element, a replaced node found by selector, the window, async, a throw
   const el = { scrollTop: 120, scrollLeft: 5 };
@@ -186,6 +234,39 @@ def test_watch_follows_a_url_function(shell_js_result):
     r = shell_js_result
     assert r["sat_out"]                      # falsy url: no fetch, no paint
     assert r["moved"] == ["/c", "/d"]        # same JSON at a new url is a new answer; a third check is quiet
+
+
+def test_watch_signature_and_each(shell_js_result):
+    r = shell_js_result
+    assert r["sig_painted"] == [1, 4]        # ages 2 and 3 changed only a ticking field: no repaint
+    assert r["each_first4"] == [[1, True], [2, False], [3, False], [4, True]]
+    assert r["each_before_paint"]
+
+
+def test_watch_takes_the_pages_own_fetcher(shell_js_result):
+    asked, painted, api_untouched = shell_js_result["own_fetch"]
+    # asked twice: the first round, and the one check() ran after it
+    assert set(asked) == {"/f"} and painted == [9] and api_untouched
+
+
+def test_watch_while_visible(shell_js_result):
+    r = shell_js_result
+    assert r["hidden_quiet"]                 # a hidden tab asks nothing
+    assert r["shown"] == [5]                 # and catches up the moment it is shown
+    assert r["unhooked"]                     # stop() takes its listener back
+
+
+def test_watch_rate_can_change(shell_js_result):
+    r = shell_js_result
+    assert r["slow"] == 1
+    assert r["faster"]
+
+
+def test_check_during_a_round_gets_a_fresh_answer(shell_js_result):
+    served, painted, shared = shell_js_result["fresh_after_check"]
+    assert served == 2                       # one more round, not one per caller
+    assert painted == [1, 2]
+    assert shared                            # both callers wait on the same follow-up
 
 
 def test_keeping_scroll_puts_it_back(shell_js_result):
